@@ -54,7 +54,7 @@ class MRGSensor(Entity):
             "manufacturer": init_data["status"]["manufacturer"],
             "model": init_data["status"]["model"],
             "sw_version": init_data["status"]["fireware"],
-            "name": "MEIZU Remoter Gateway"
+            "name": f"MEIZU Remoter {self._real_address}"
         }
         self._state = self._get_state(init_data)
         self._unique_id = f"{DOMAIN}.{serialno}_{self._address}_{sensor_type}"

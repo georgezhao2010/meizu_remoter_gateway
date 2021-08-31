@@ -1,0 +1,9 @@
+set_mode:
+  description: Send the specified infrared code via MEIZU remoter
+  fields:
+    entity_id:
+      description: Entity ID of MEIZU remoter entity
+      example: "sensor.683e34c2df1c_remoter"
+    ir_code:
+      description: Infrared code for send
+      example: "65001C63C68D8000C8"

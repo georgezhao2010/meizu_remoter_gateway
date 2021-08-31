@@ -1,0 +1,37 @@
+{
+    "config": {
+        "abort": {
+            "already_configured": "设备已经配置过",
+            "version_required": "网关当前固件版本无法满足集成最低固件版本要求，请升级固件版本",
+            "already_in_progress": "配置流程正在进行中"
+        },
+        "error": {
+            "already_configured": "设备`{serialno}`已经配置过",
+            "version_required": "网关当前固件版本无法满足集成最低固件版本要求，请升级固件版本",
+            "connection_error": "无法连接到魅族万能遥控器网关"
+        },
+        "step": {
+            "discovery_confirm": {
+                "description": "确实要将魅族万能遥控器网关`{serialno}`添加到Home Assistant?",
+                "title": "找到魅族万能遥控器网关设备"
+            },
+            "user": {
+                "data": {
+                    "host": "地址",
+                    "port": "端口"
+                },
+                "description": "输入魅族万能遥控器网关的连接配置"
+            }
+        }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "data": {
+                    "update_interval": "数据更新间隔(分钟)"
+                },
+                "title": "选项"
+            }
+        }
+    }
+}

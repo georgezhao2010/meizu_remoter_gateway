@@ -1,0 +1,37 @@
+{
+    "config": {
+        "abort": {
+            "already_configured": "Device is already configured",
+            "version_required": "The minimum firmware version requirements are not met, please upgrade the firmware",
+            "already_in_progress": "Configuration flow  is already in progress"
+        },
+        "error": {
+            "already_configured": "Device `{serialno}` is already configured",
+            "version_required": "The minimum firmware version requirements are not met, please upgrade the firmware",
+            "connection_error": "Can't connect to MEIZHU Remoter Gateway"
+        },
+        "step": {
+            "discovery_confirm": {
+                "description": "Do you want to add the MEIZHU Remoter Gateway `{serialno}` to Home Assistant?",
+                "title": "Discovered MEIZHU Remoter Gateway device"
+            },
+            "user": {
+                "data": {
+                    "host": "Host",
+                    "port": "Port"
+                },
+                "description": "Please enter connection settings of your MEIZHU Remoter Gateway device"
+            }
+        }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "data": {
+                    "update_interval": "The interval of data update (in minutes)"
+                },
+                "title": "Options"
+            }
+        }
+    }
+}

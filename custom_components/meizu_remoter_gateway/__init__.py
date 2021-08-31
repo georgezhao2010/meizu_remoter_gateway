@@ -24,7 +24,7 @@ from .sensor import MRG_SENSORS, MRGSensor
 from homeassistant.core import HomeAssistant
 
 SERVICE_SEND_IR = "send_ir"
-SERVICE_REMOVE_PAIR = "remove_pair"
+SERVICE_REMOVE_BIND = "remove_bind"
 ATTR_IR_CODE = "ir_code"
 UN_SUBDISCRIPT = "un_subscript"
 MANAGER = "manager"
@@ -36,7 +36,7 @@ SERVICE_SEND_IR_SCHEMA = vol.Schema(
     }
 )
 
-SERVICE_REMOVE_PAIR_SCHEMA = vol.Schema(
+SERVICE_REMOVE_BIND_SCHEMA = vol.Schema(
     {
         vol.Required(ATTR_ENTITY_ID): cv.entity_id
     }
@@ -88,11 +88,11 @@ async def async_setup_entry(hass: HomeAssistant, config_entry):
         if entity is not None:
             dm.send_message("irsend", {"device": entity.state, "ircode": ir_code})
 
-    def remove_pair_handle(service):
+    def remove_bind_handle(service):
         entity_id = service.data[ATTR_ENTITY_ID]
         entity = hass.states.get(entity_id)
         if entity is not None:
-            dm.send_message("removepair", {"device": entity.state})
+            dm.send_message("removebind", {"device": entity.state})
 
     hass.services.async_register(
         DOMAIN,
@@ -102,9 +102,9 @@ async def async_setup_entry(hass: HomeAssistant, config_entry):
     )
     hass.services.async_register(
         DOMAIN,
-        SERVICE_REMOVE_PAIR,
-        remove_pair_handle,
-        schema=SERVICE_REMOVE_PAIR_SCHEMA,
+        SERVICE_REMOVE_BIND,
+        remove_bind_handle,
+        schema=SERVICE_REMOVE_BIND_SCHEMA,
     )
 
     return True
@@ -178,7 +178,7 @@ class DeviceManager(threading.Thread):
                 data = jdata["data"]
                 options = {CONF_UPDATE_INTERVAL: data["update_interval"]}
                 self._hass.config_entries.async_update_entry(self._config_entry, options=options)
-            elif jdata["type"] == "removepair":
+            elif jdata["type"] == "removebind":
                 data = jdata["data"]
                 removes = self.remoter_removes(data["device"])
                 if removes is not None:

@@ -52,10 +52,10 @@
 遥控器设备包含4个传感器，分别见下表
 | 实体ID | 默认名称 | 含义 |
 | ---- | ---- | ---- |
-| `sensor.<网关序列号>_<蓝牙地址>_remoter` | MEIZU Remoter <蓝牙地址> | 遥控器实体，服务调用需传入此实体ID |
-| `sensor.<网关序列号>_<蓝牙地址>_battery` | MEIZU Remoter <蓝牙地址> Battery | 遥控器电量 |
-| `sensor.<网关序列号>_<蓝牙地址>_humidity` | MEIZU Remoter <蓝牙地址> Humidity | 遥控器湿度传感器数值 |
-| `sensor.<网关序列号>_<蓝牙地址>_temperature` | MEIZU Remoter <蓝牙地址> Temperature | 遥控器温度传感器数值 |
+| `sensor.<网关编号>_<蓝牙地址>_remoter` | MEIZU Remoter <蓝牙地址> | 遥控器实体，服务调用需传入此实体ID |
+| `sensor.<网关编号>_<蓝牙地址>_battery` | MEIZU Remoter <蓝牙地址> Battery | 遥控器电量 |
+| `sensor.<网关编号>_<蓝牙地址>_humidity` | MEIZU Remoter <蓝牙地址> Humidity | 遥控器湿度传感器数值 |
+| `sensor.<网关编号>_<蓝牙地址>_temperature` | MEIZU Remoter <蓝牙地址> Temperature | 遥控器温度传感器数值 |
 
 *注意：网关采集数据时，如果轮询某个遥控器数据失败，该遥控器下所有传感器将被标识为不可用，直到下次轮询成功。如果连续5次轮询失败，该设备将会被移除出轮询列表，在下次重新启动网关之前，不再更新该设备的数据。这种情况可能是遥控器设别故障或电池耗尽。在排除故障后，将设备与网关重新绑定，可恢复数据的更新。*
 

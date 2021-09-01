@@ -81,18 +81,32 @@ async def async_setup_entry(hass: HomeAssistant, config_entry):
     hass.config_entries.async_update_entry(config_entry, options=options)
     hass.data[config_entry.entry_id][UN_SUBDISCRIPT] = config_entry.add_update_listener(update_listener)
 
+    def get_address_from_entity_id(entity_id):
+        address = None
+        s_entity_id = entity_id.split(".", 1)
+        if len(s_entity_id) == 2 and s_entity_id[1] is not None:
+            rets = s_entity_id[1].split("_", 3)
+            if len(rets) == 3 and rets[0] == serialno.lower() and rets[2] == "remoter" and len(rets[1]) == 12:
+                address = [rets[1][i:i+2] for i in range(0, len(rets[1]), 2)]
+                address = ":".join(n for n in address)
+        return address
+
     def send_ir_handle(service):
         entity_id = service.data[ATTR_ENTITY_ID]
         ir_code = service.data[ATTR_IR_CODE]
-        entity = hass.states.get(entity_id)
-        if entity is not None:
-            dm.send_message("irsend", {"device": entity.state, "ircode": ir_code})
+        address = get_address_from_entity_id(entity_id)
+        if address is not None:
+            dm.send_message("irsend", {"device": address, "ircode": ir_code})
+        else:
+            _LOGGER.error(f"service called with a invalid entity ID")
 
     def remove_bind_handle(service):
         entity_id = service.data[ATTR_ENTITY_ID]
-        entity = hass.states.get(entity_id)
-        if entity is not None:
-            dm.send_message("removebind", {"device": entity.state})
+        address = get_address_from_entity_id(entity_id)
+        if address is not None:
+            dm.send_message("removebind", {"device": address})
+        else:
+            _LOGGER.error(f"service called with a invalid entity ID")
 
     hass.services.async_register(
         DOMAIN,
@@ -184,8 +198,9 @@ class DeviceManager(threading.Thread):
                 if removes is not None:
                     for remove in removes:
                         remove()
-                self._hass.data[DOMAIN][DEVICES][self._serialno][UPDATES].pop(data["device"])
-                self._hass.data[DOMAIN][DEVICES][self._serialno][REMOVES].pop(data["device"])
+                if self._serialno in self._hass.data[DOMAIN][DEVICES]:
+                    self._hass.data[DOMAIN][DEVICES][self._serialno][UPDATES].pop(data["device"])
+                    self._hass.data[DOMAIN][DEVICES][self._serialno][REMOVES].pop(data["device"])
             else:
                 _LOGGER.warning(f"Received a unknown message")
         else:

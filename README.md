@@ -1,5 +1,7 @@
+# MEIZU Remoter Gateway
+
 # 魅族遥控器蓝牙网关集成
-[魅族遥控器蓝牙网关](https://github.com/georgezhao2010/esp32_meizu_remoter_gateway)的Home Assistant集成
+[魅族遥控器蓝牙网关](https://github.com/georgezhao2010/esp32_meizu_remoter_gateway)的Home Assistant集成组件
 
 # 特点
 - 网关设备自动发现，Home Assistant中点击鼠标两次即可完成集成添加配置

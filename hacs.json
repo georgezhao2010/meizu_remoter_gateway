@@ -1,0 +1,5 @@
+{
+    "name": "MEIZU Remoter Gateway",
+    "domains": ["sensor"],
+    "render_readme": true
+}

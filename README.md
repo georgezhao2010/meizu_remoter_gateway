@@ -60,11 +60,21 @@
 | `sensor.<网关编号>_<蓝牙地址>_battery` | MEIZU Remoter <蓝牙地址> Battery | 遥控器电量 |
 | `sensor.<网关编号>_<蓝牙地址>_humidity` | MEIZU Remoter <蓝牙地址> Humidity | 湿度传感器数值 |
 | `sensor.<网关编号>_<蓝牙地址>_temperature` | MEIZU Remoter <蓝牙地址> Temperature | 温度传感器数值 |
+| `sensor.<网关编号>_<蓝牙地址>_rssi` | MEIZU Remoter <蓝牙地址> RSSI | 蓝牙信号强度 |
 
 ***注意：网关采集数据时，如果轮询某个遥控器数据失败，该遥控器下所有传感器将被标识为不可用，直到下次轮询成功。如果连续5次轮询失败，该设备将会被移除出轮询列表，在下次重新启动网关之前，不再更新该设备的数据。这种情况可能是遥控器设别故障或电池耗尽。在排除故障后，将设备与网关重新绑定，可恢复数据的更新。***
 
 # 服务
 集成包含有有两个服务
+## 解除绑定
+如果需要网关启动绑定操作，调用`bind`服务，服务调用形式如下：
+```
+service: meizu_remoter_gateway.bind
+data:
+  serial_no: 1B32A94
+```
+serial_no参数为网关序列号
+
 ## 解除绑定
 如果需要将单一遥控器从网关移除绑定，调用`remove_bind`服务，服务调用形式如下：
 ```
@@ -80,7 +90,8 @@ data:
 service: meizu_remoter_gateway.ir_send
 data:
   entity_id: sensor.1c4bd9_683e34ccdfad_remoter
-  ir_code: 65001C63C68D8000C8
+  key: 65001C63C68D8000C8
+  ir_code: 112220111911203a00001aa000012...
 ```
 以上红外码用于打开/关闭SONY电视。
 

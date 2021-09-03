@@ -10,10 +10,11 @@ from .const import (
     CONF_UPDATE_INTERVAL,
     CONF_SERIALNO
 )
-
 from . import DeviceManager
 
 _LOGGER = logging.getLogger(__name__)
+
+ALREADY_IN_PROGRESS = "already_in_progress"
 
 
 def version_check(version: str, required_version: str):
@@ -102,15 +103,22 @@ class MRGFlowHandler(ConfigFlow, domain=DOMAIN):
         )
 
     async def async_step_zeroconf(self, discovery_info: DiscoveryInfoType):
-        _LOGGER.debug(f"New device discovered {discovery_info}")
         host = discovery_info["host"]
         serialno = discovery_info["properties"]["serialno"]
         if DOMAIN in self.hass.data and DEVICES in self.hass.data[DOMAIN] and \
                 serialno in self.hass.data[DOMAIN][DEVICES]:
             return self.async_abort(reason="already_configured")
+        if DOMAIN in self.hass.data and ALREADY_IN_PROGRESS in self.hass.data[DOMAIN] and \
+                serialno in self.hass.data[DOMAIN][ALREADY_IN_PROGRESS]:
+            return self.async_abort(reason="already_in_progress")
         version = discovery_info["properties"]["version"]
         if not version_check(version, REQUIRED_FIRMWARE_VERSION):
             return self.async_abort(reason="version_required")
+        if DOMAIN not in self.hass.data:
+            self.hass.data[DOMAIN] = {}
+        if ALREADY_IN_PROGRESS not in self.hass.data[DOMAIN]:
+            self.hass.data[DOMAIN][ALREADY_IN_PROGRESS] = []
+        self.hass.data[DOMAIN][ALREADY_IN_PROGRESS].append(serialno)
         port = discovery_info["port"]
         self._host = host
         self._port = port

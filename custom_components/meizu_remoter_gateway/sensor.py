@@ -7,6 +7,7 @@ from homeassistant.const import(
     DEVICE_CLASS_BATTERY,
     TEMP_CELSIUS,
     PERCENTAGE,
+    SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
 )
 from .const import DOMAIN, CONF_SERIALNO, UPDATES, REMOVES, DEVICES, ADD_CB
 
@@ -34,6 +35,12 @@ MRG_SENSORS = {
         "device_class": DEVICE_CLASS_BATTERY,
         "key_path": ["status", "battery"],
         "unit": PERCENTAGE
+    },
+    "rssi": {
+        "name": "RSSI",
+        "icon": "hass:signal",
+        "key_path": ["status", "rssi"],
+        "unit": SIGNAL_STRENGTH_DECIBELS_MILLIWATT
     },
 }
 

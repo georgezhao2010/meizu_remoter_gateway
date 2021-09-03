@@ -3,7 +3,7 @@
         "abort": {
             "already_configured": "Device is already configured",
             "version_required": "The minimum firmware version requirements are not met, please upgrade the firmware",
-            "already_in_progress": "Configuration flow  is already in progress"
+            "already_in_progress": "Configuration flow is already in progress"
         },
         "error": {
             "already_configured": "Device `{serialno}` is already configured",

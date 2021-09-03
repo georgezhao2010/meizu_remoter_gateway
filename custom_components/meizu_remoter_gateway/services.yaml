@@ -1,4 +1,4 @@
-set_mode:
+send_ir:
   description: Send the specified infrared code via MEIZU remoter
   fields:
     entity_id:
@@ -7,3 +7,17 @@ set_mode:
     ir_code:
       description: Infrared code for send
       example: "65001C63C68D8000C8"
+
+bind:
+  description: Put the gateway into bing mode, to bind a new remoter to gateway
+  fields:
+    serial_no:
+      description: The serial number of gateway
+      example: "1E329D"
+
+remove_bind:
+  description: Remove a remoter from Home Assistant and binded gateway
+  fields:
+    entity_id:
+      description: Entity ID of MEIZU remoter entity
+      example: "sensor.683e34c2df1c_remoter"

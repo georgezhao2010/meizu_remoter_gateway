@@ -24,15 +24,25 @@ from .sensor import MRG_SENSORS, MRGSensor
 from homeassistant.core import HomeAssistant
 
 SERVICE_SEND_IR = "send_ir"
+SERVICE_BIND = "bind"
 SERVICE_REMOVE_BIND = "remove_bind"
+ATTR_KEY = "key"
 ATTR_IR_CODE = "ir_code"
+ATTR_SERIAL_NO = "serial_no"
 UN_SUBDISCRIPT = "un_subscript"
 MANAGER = "manager"
 
 SERVICE_SEND_IR_SCHEMA = vol.Schema(
     {
         vol.Required(ATTR_ENTITY_ID): cv.entity_id,
-        vol.Required(ATTR_IR_CODE): str
+        vol.Required(ATTR_KEY): str,
+        vol.Optional(ATTR_IR_CODE): str
+    }
+)
+
+SERVICE_BIND_SCHEMA = vol.Schema(
+    {
+        vol.Required(ATTR_SERIAL_NO): str
     }
 )
 
@@ -45,10 +55,12 @@ SERVICE_REMOVE_BIND_SCHEMA = vol.Schema(
 _LOGGER = logging.getLogger(__name__)
 
 
+
 async def update_listener(hass, config_entry):
     scan_interval = config_entry.options.get(CONF_UPDATE_INTERVAL)
-    dm = hass.data[config_entry.entry_id][MANAGER]
-    dm.send_message("setinterval", {"update_interval": scan_interval})
+    serialno = config_entry.data.get(CONF_SERIALNO)
+    dm = hass.data[DOMAIN][DEVICES][serialno][MANAGER]
+    dm.send_message("setinterval", data={"update_interval": scan_interval})
 
 
 async def async_setup(hass: HomeAssistant, hass_config: dict):
@@ -72,41 +84,54 @@ async def async_setup_entry(hass: HomeAssistant, config_entry):
         return False
     hass.data[DOMAIN][DEVICES][serialno][UPDATES] = {}
     hass.data[DOMAIN][DEVICES][serialno][REMOVES] = {}
-    hass.async_create_task(hass.config_entries.async_forward_entry_setup(config_entry, "sensor"))
-    if config_entry.entry_id not in hass.data:
-        hass.data[config_entry.entry_id] = {}
-    hass.data[config_entry.entry_id][MANAGER] = dm
-
+    hass.data[DOMAIN][DEVICES][serialno][MANAGER] = dm
+    hass.data[DOMAIN][DEVICES][serialno][UN_SUBDISCRIPT] = config_entry.add_update_listener(update_listener)
     options = {CONF_UPDATE_INTERVAL:result["update_interval"]}
     hass.config_entries.async_update_entry(config_entry, options=options)
-    hass.data[config_entry.entry_id][UN_SUBDISCRIPT] = config_entry.add_update_listener(update_listener)
+    hass.async_create_task(hass.config_entries.async_forward_entry_setup(config_entry, "sensor"))
 
     def get_address_from_entity_id(entity_id):
+        serial_no = None
         address = None
         s_entity_id = entity_id.split(".", 1)
         if len(s_entity_id) == 2 and s_entity_id[1] is not None:
             rets = s_entity_id[1].split("_", 3)
-            if len(rets) == 3 and rets[0] == serialno.lower() and rets[2] == "remoter" and len(rets[1]) == 12:
+            if len(rets) == 3 and rets[2] == "remoter" and len(rets[1]) == 12:
                 address = [rets[1][i:i+2] for i in range(0, len(rets[1]), 2)]
                 address = ":".join(n for n in address)
-        return address
+                serial_no = rets[0].upper()
+        return serial_no, address
 
     def send_ir_handle(service):
         entity_id = service.data[ATTR_ENTITY_ID]
+        key = service.data[ATTR_KEY]
         ir_code = service.data[ATTR_IR_CODE]
-        address = get_address_from_entity_id(entity_id)
-        if address is not None:
-            dm.send_message("irsend", {"device": address, "ircode": ir_code})
+        serial_no, address = get_address_from_entity_id(entity_id)
+        if address is not None and serial_no in hass.data[DOMAIN][DEVICES]:
+            manager = hass.data[DOMAIN][DEVICES][serial_no][MANAGER]
+            if ir_code is None:
+                manager.send_message("irsend", data={"device": address, "key": key})
+            else:
+                manager.send_message("irsend", data={"device": address, "key": key, "ircode": ir_code})
         else:
-            _LOGGER.error(f"service called with a invalid entity ID")
+            _LOGGER.error(f"Service called with an invalid entity ID")
+
+    def bind_handle(service):
+        serial_no = service.data[ATTR_SERIAL_NO]
+        if serial_no in hass.data[DOMAIN][DEVICES]:
+            manager = hass.data[DOMAIN][DEVICES][serial_no][MANAGER]
+            manager.send_message("bind")
+        else:
+            _LOGGER.error(f"Service called with an invalid gateway serial number")
 
     def remove_bind_handle(service):
         entity_id = service.data[ATTR_ENTITY_ID]
-        address = get_address_from_entity_id(entity_id)
-        if address is not None:
-            dm.send_message("removebind", {"device": address})
+        serial_no, address = get_address_from_entity_id(entity_id)
+        if address is not None and serial_no in hass.data[DOMAIN][DEVICES]:
+            manager = hass.data[DOMAIN][DEVICES][serial_no][MANAGER]
+            manager.send_message("removebind", data={"device": address})
         else:
-            _LOGGER.error(f"service called with a invalid entity ID")
+            _LOGGER.error(f"Service called with an invalid entity ID")
 
     hass.services.async_register(
         DOMAIN,
@@ -116,11 +141,16 @@ async def async_setup_entry(hass: HomeAssistant, config_entry):
     )
     hass.services.async_register(
         DOMAIN,
+        SERVICE_BIND,
+        bind_handle,
+        schema=SERVICE_BIND_SCHEMA,
+    )
+    hass.services.async_register(
+        DOMAIN,
         SERVICE_REMOVE_BIND,
         remove_bind_handle,
         schema=SERVICE_REMOVE_BIND_SCHEMA,
     )
-
     return True
 
 
@@ -128,12 +158,11 @@ async def async_unload_entry(hass: HomeAssistant, config_entry):
     config = config_entry.data
     serialno = config[CONF_SERIALNO]
     await hass.config_entries.async_forward_entry_unload(config_entry, "sensor")
-    unsub = hass.data[config_entry.entry_id][UN_SUBDISCRIPT]
+    unsub = hass.data[DOMAIN][DEVICES][serialno][UN_SUBDISCRIPT]
     if unsub is not None:
         unsub()
-    dm = hass.data[config_entry.entry_id][MANAGER]
+    dm = hass.data[DOMAIN][DEVICES][serialno][MANAGER]
     dm.close()
-    hass.data.pop(config_entry.entry_id)
     hass.data[DOMAIN][DEVICES].pop(serialno)
     if len(hass.data[DOMAIN][DEVICES]) == 0:
         hass.data.pop(DOMAIN)
@@ -149,10 +178,16 @@ class DeviceManager(threading.Thread):
         self._hass = hass
         if config_entry is not None:
             self._serialno = self._config_entry.data[CONF_SERIALNO]
+        else:
+            self._serialno = "none"
         self._host = host
         self._port = port
         self._is_run = False
         self._timeout_counter = 0
+
+    class Bind(Exception):
+        def __str__(self):
+            return "Can not start bind mode at this time"
 
     def remoter_callbacks(self, address, cb_type):
         if DEVICES in self._hass.data[DOMAIN] and self._serialno in self._hass.data[DOMAIN][DEVICES] and \
@@ -201,20 +236,26 @@ class DeviceManager(threading.Thread):
                 if self._serialno in self._hass.data[DOMAIN][DEVICES]:
                     self._hass.data[DOMAIN][DEVICES][self._serialno][UPDATES].pop(data["device"])
                     self._hass.data[DOMAIN][DEVICES][self._serialno][REMOVES].pop(data["device"])
+            elif jdata["type"] == "bind":
+                data = jdata["data"]
+                status = data["status"]
+                if status == 0:
+                    raise DeviceManager.Bind
             else:
-                _LOGGER.warning(f"Received a unknown message")
+                _LOGGER.warning(f"Gateway[{self._serialno}] received an unknown message")
         else:
-            _LOGGER.warning(f"Received a invalid message")
+            _LOGGER.warning(f"Gateway[{self._serialno}] received an invalid message")
 
     def run(self):
         while self._is_run:
             config_info = None
             with self._lock:
                 while self._socket is None:
-                    _LOGGER.debug("Try to connect to MEIZU remoter gateway at %s:%d", self._host, self._port)
+                    _LOGGER.debug(f"Gateway[{self._serialno}] attempt to connect to {self._host}:{self._port}")
                     config_info = self.open(False)
                     if config_info is None:
                         time.sleep(3)
+
                     if not self._is_run:
                         if self._socket is not None:
                             self._socket.close()
@@ -232,21 +273,21 @@ class DeviceManager(threading.Thread):
                     msg_len = len(msg)
                     if msg_len == 0:
                         raise socket.error
-                    _LOGGER.debug(f"Received message {msg}")
+                    _LOGGER.debug(f"Gateway[{self._serialno}] Received message {msg}")
                     self.process_message(msg)
                 except socket.timeout:
                     self._timeout_counter = self._timeout_counter + 1
                     if self._timeout_counter >= 20:
-                        _LOGGER.debug(f"Heartbeat timeout detected, reconnecting")
-                        self.close(run=True)
+                        _LOGGER.debug(f"Gateway[{self._serialno}] Heartbeat timeout detected, reconnecting")
+                        self.close(run=self._is_run)
                         break
                     if self._timeout_counter % 2 == 0:
                         self.send_message("heartbeat")
                     pass
                 except socket.error:
-                    _LOGGER.debug(f"Except socket.error {socket.error.errno} raised in socket.recv()")
-                    self.close(run=True)
+                    self.close(run=self._is_run)
                     break
+
 
     def open(self, start_thread):
         config_info = None
@@ -254,19 +295,17 @@ class DeviceManager(threading.Thread):
             self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self._socket.settimeout(10)
             self._socket.connect((self._host, self._port))
-            _LOGGER.debug(f"Socket connected")
-            self._socket.send("{\"type\":\"config_info\"}".encode("utf-8"))
-            msg = self._socket.recv(512)
-            _LOGGER.debug(f"config_info Received {msg}")
+            _LOGGER.debug(f"Gateway[{self._serialno}] Socket connected")
+            msg = self.send_message("config_info", reply=True);
             result = json.loads(msg.decode("utf-8"))
             if "type" in result and result["type"] == "config_info" and "data" in result:
                 config_info = result["data"]
         except socket.timeout:
-            _LOGGER.debug(f"Socket connect timeout")
+            _LOGGER.debug(f"Gateway[{self._serialno}] Socket connect timeout")
             self._socket.close()
             self._socket = None
         except socket.error:
-            _LOGGER.debug(f"Socket connect error {socket.error}")
+            _LOGGER.debug(f"Gateway[{self._serialno}] Socket connect error {socket.error}")
             self._socket.close()
             self._socket = None
         if start_thread:
@@ -281,14 +320,18 @@ class DeviceManager(threading.Thread):
                 self._socket.close()
                 self._socket = None
 
-    def send_message(self, msg_type, data=None):
+    def send_message(self, msg_type, data=None, reply=False):
+        reply_msg = None;
         if data is not None:
             msg = "{\"type\":\"" + msg_type + "\",\"data\":" + f"{json.dumps(data)}" + "}"
         else:
             msg = "{\"type\":\"" + msg_type + "\"}"
         with self._lock:
             try:
-                _LOGGER.debug(f"Send message {msg}")
+                _LOGGER.debug(f"Gateway[{self._serialno}] Send message {msg}")
                 self._socket.send(msg.encode("utf-8"))
+                if reply and not self._is_run:
+                    reply_msg = self._socket.recv(512)
             except:
                 pass
+        return reply_msg

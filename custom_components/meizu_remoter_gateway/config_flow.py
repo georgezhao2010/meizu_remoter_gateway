@@ -55,6 +55,9 @@ class MRGFlowHandler(ConfigFlow, domain=DOMAIN):
                 if not version_check(version, REQUIRED_FIRMWARE_VERSION):
                     return self.async_step_user(error="version_required")
                 else:
+                    if DOMAIN in self.hass.data and ALREADY_IN_PROGRESS in self.hass.data[DOMAIN] and \
+                            self._serialno in self.hass.data[DOMAIN][ALREADY_IN_PROGRESS]:
+                        self.hass.data[DOMAIN][ALREADY_IN_PROGRESS].remove(self._serialno)
                     return self.async_create_entry(
                         title=self._serialno,
                         data={
@@ -84,6 +87,11 @@ class MRGFlowHandler(ConfigFlow, domain=DOMAIN):
             config_info = manager.open(False)
             manager.close()
             if config_info is not None:
+                _LOGGER.debug(self.hass.data[DOMAIN][ALREADY_IN_PROGRESS])
+                _LOGGER.debug(self._serialno)
+                if DOMAIN in self.hass.data and ALREADY_IN_PROGRESS in self.hass.data[DOMAIN] and \
+                        self._serialno in self.hass.data[DOMAIN][ALREADY_IN_PROGRESS]:
+                    self.hass.data[DOMAIN][ALREADY_IN_PROGRESS].remove(self._serialno)
                 update_interval = config_info["update_interval"]
                 return self.async_create_entry(
                     title=self._serialno,

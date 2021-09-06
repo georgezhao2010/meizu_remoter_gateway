@@ -86,7 +86,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry):
     hass.data[DOMAIN][DEVICES][serialno][REMOVES] = {}
     hass.data[DOMAIN][DEVICES][serialno][MANAGER] = dm
     hass.data[DOMAIN][DEVICES][serialno][UN_SUBDISCRIPT] = config_entry.add_update_listener(update_listener)
-    options = {CONF_UPDATE_INTERVAL:result["update_interval"]}
+    options = {CONF_UPDATE_INTERVAL: result["update_interval"]}
     hass.config_entries.async_update_entry(config_entry, options=options)
     hass.async_create_task(hass.config_entries.async_forward_entry_setup(config_entry, "sensor"))
 
@@ -210,7 +210,7 @@ class DeviceManager(threading.Thread):
         async_add_entities(sensors)
 
     def process_message(self, msg):
-        jdata = json.loads(msg.decode("utf-8"))
+        jdata = json.loads(msg)
         if jdata is not None and "type" in jdata:
             if jdata["type"] == "heartbeat":
                 self._timeout_counter = 0
@@ -249,17 +249,13 @@ class DeviceManager(threading.Thread):
     def run(self):
         while self._is_run:
             config_info = None
-            with self._lock:
-                while self._socket is None:
-                    _LOGGER.debug(f"Gateway[{self._serialno}] attempt to connect to {self._host}:{self._port}")
-                    config_info = self.open(False)
-                    if config_info is None:
-                        time.sleep(3)
-
-                    if not self._is_run:
-                        if self._socket is not None:
-                            self._socket.close()
-                        return
+            while self._socket is None:
+                config_info = self.open(False)
+                if self._socket is None:
+                    time.sleep(3)
+                if not self._is_run:
+                    self._socket.close()
+                    break
             if config_info is not None:
                 options = {CONF_UPDATE_INTERVAL: config_info["update_interval"]}
                 self._hass.config_entries.async_update_entry(self._config_entry, options=options)
@@ -273,42 +269,44 @@ class DeviceManager(threading.Thread):
                     msg_len = len(msg)
                     if msg_len == 0:
                         raise socket.error
+                    msg = msg.decode("utf-8")
                     _LOGGER.debug(f"Gateway[{self._serialno}] Received message {msg}")
                     self.process_message(msg)
                 except socket.timeout:
                     self._timeout_counter = self._timeout_counter + 1
-                    if self._timeout_counter >= 20:
+                    if self._timeout_counter >= 24:
                         _LOGGER.debug(f"Gateway[{self._serialno}] Heartbeat timeout detected, reconnecting")
                         self.close(run=self._is_run)
                         break
-                    if self._timeout_counter % 2 == 0:
+                    if self._timeout_counter % 6 == 5:
                         self.send_message("heartbeat")
                     pass
                 except socket.error:
                     self.close(run=self._is_run)
                     break
 
-
     def open(self, start_thread):
         config_info = None
         try:
-            self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self._socket.settimeout(10)
-            self._socket.connect((self._host, self._port))
-            _LOGGER.debug(f"Gateway[{self._serialno}] Socket connected")
+            with self._lock:
+                self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                self._socket.settimeout(5)
+                _LOGGER.debug(f"Gateway[{self._serialno}] attempt to connect to {self._host}:{self._port}")
+                self._socket.connect((self._host, self._port))
+                _LOGGER.debug(f"Gateway[{self._serialno}] Socket connected")
             msg = self.send_message("config_info", reply=True);
-            result = json.loads(msg.decode("utf-8"))
+            result = json.loads(msg)
             if "type" in result and result["type"] == "config_info" and "data" in result:
                 config_info = result["data"]
         except socket.timeout:
-            _LOGGER.debug(f"Gateway[{self._serialno}] Socket connect timeout")
+            _LOGGER.warning(f"Gateway[{self._serialno}] Socket connect timeout")
             self._socket.close()
             self._socket = None
         except socket.error:
-            _LOGGER.debug(f"Gateway[{self._serialno}] Socket connect error {socket.error}")
+            _LOGGER.error(f"Gateway[{self._serialno}] Socket connect error {socket.error}")
             self._socket.close()
             self._socket = None
-        if start_thread:
+        if start_thread and not self._is_run:
             self._is_run = True
             threading.Thread.start(self)
         return config_info
@@ -330,8 +328,10 @@ class DeviceManager(threading.Thread):
             try:
                 _LOGGER.debug(f"Gateway[{self._serialno}] Send message {msg}")
                 self._socket.send(msg.encode("utf-8"))
-                if reply and not self._is_run:
+                if reply:
                     reply_msg = self._socket.recv(512)
-            except:
-                pass
+                    if reply_msg is not None and len(reply_msg) > 0:
+                        reply_msg = reply_msg.decode("utf-8")
+            except Exception as e:
+                _LOGGER.warning(f"Gateway[{self._serialno}] send error: {e}")
         return reply_msg

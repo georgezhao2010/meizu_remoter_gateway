@@ -66,7 +66,7 @@
 
 # 服务
 集成包含有有两个服务
-## 解除绑定
+## 绑定
 如果需要网关启动绑定操作，调用`bind`服务，服务调用形式如下：
 ```
 service: meizu_remoter_gateway.bind

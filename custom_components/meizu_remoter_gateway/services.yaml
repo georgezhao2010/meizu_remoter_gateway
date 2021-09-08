@@ -15,6 +15,16 @@ bind:
       description: The serial number of gateway
       example: "1E329D"
 
+bind_threshold:
+  description: Set the binding mode RSSI threshold to find nearly device
+  fields:
+    serial_no:
+      description: The serial number of gateway
+      example: "1E329D"
+    threshold:
+      description: The RSSI threshold
+      example: -35
+
 remove_bind:
   description: Remove a remoter from Home Assistant and binded gateway
   fields:

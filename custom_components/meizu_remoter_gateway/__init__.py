@@ -25,10 +25,12 @@ from homeassistant.core import HomeAssistant
 
 SERVICE_SEND_IR = "send_ir"
 SERVICE_BIND = "bind"
+SERVICE_BIND_THRESHOLD = "bind_threshold"
 SERVICE_REMOVE_BIND = "remove_bind"
 ATTR_KEY = "key"
 ATTR_IR_CODE = "ir_code"
 ATTR_SERIAL_NO = "serial_no"
+ATTR_THRESHOLD = "threshold"
 UN_SUBDISCRIPT = "un_subscript"
 MANAGER = "manager"
 
@@ -43,6 +45,13 @@ SERVICE_SEND_IR_SCHEMA = vol.Schema(
 SERVICE_BIND_SCHEMA = vol.Schema(
     {
         vol.Required(ATTR_SERIAL_NO): str
+    }
+)
+
+SERVICE_BIND_THRESHOLD_SCHEMA = vol.Schema(
+    {
+        vol.Required(ATTR_SERIAL_NO): str,
+        vol.Required(ATTR_THRESHOLD): int
     }
 )
 
@@ -124,6 +133,15 @@ async def async_setup_entry(hass: HomeAssistant, config_entry):
         else:
             _LOGGER.error(f"Service called with an invalid gateway serial number")
 
+    def bind_threshold_handle(service):
+        serial_no = service.data[ATTR_SERIAL_NO]
+        threshold = service.data[ATTR_THRESHOLD]
+        if serial_no in hass.data[DOMAIN][DEVICES]:
+            manager = hass.data[DOMAIN][DEVICES][serial_no][MANAGER]
+            manager.send_message("bindthrld",{"threshold": threshold})
+        else:
+            _LOGGER.error(f"Service called with an invalid gateway serial number")
+
     def remove_bind_handle(service):
         entity_id = service.data[ATTR_ENTITY_ID]
         serial_no, address = get_address_from_entity_id(entity_id)
@@ -144,6 +162,12 @@ async def async_setup_entry(hass: HomeAssistant, config_entry):
         SERVICE_BIND,
         bind_handle,
         schema=SERVICE_BIND_SCHEMA,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_BIND_THRESHOLD,
+        bind_threshold_handle,
+        schema=SERVICE_BIND_THRESHOLD_SCHEMA,
     )
     hass.services.async_register(
         DOMAIN,

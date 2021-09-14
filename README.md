@@ -71,7 +71,7 @@
 ```
 service: meizu_remoter_gateway.bind
 data:
-  serial_no: 1B32A94
+  serial_no: 1B32A9
 ```
 serial_no参数为网关序列号
 
@@ -82,7 +82,7 @@ serial_no参数为网关序列号
 ```
 service: meizu_remoter_gateway.bind_threshold
 data:
-  serial_no: 1B32A94
+  serial_no: 1B32A9
   threshold: -35
 ```
 serial_no参数为网关序列号
